@@ -1,0 +1,2 @@
+"""Quant paper trading system."""
+
