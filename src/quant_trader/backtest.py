@@ -14,7 +14,7 @@ from .domain import Bar, Market, SecurityType
 from .portfolio import account_values, find_position
 from .risk import RiskManager
 from .schemas import BacktestRequest, OrderCreate
-from .strategy import MovingAverageCrossStrategy
+from .strategy import create_strategy
 
 
 def load_bars(request: BacktestRequest) -> list[Bar]:
@@ -53,7 +53,7 @@ async def run_backtest(request: BacktestRequest, bars: list[Bar] | None = None) 
         max_position_ratio=Decimal("1"),
         max_gross_exposure_ratio=Decimal("1"),
     )
-    strategy = MovingAverageCrossStrategy(request.fast_window, request.slow_window)
+    strategy = create_strategy(request.strategy, request.fast_window, request.slow_window)
     with Session() as session:
         session.add(AccountModel(id="backtest", cash=request.initial_cash))
         session.commit()
@@ -89,6 +89,8 @@ async def run_backtest(request: BacktestRequest, bars: list[Bar] | None = None) 
         orders = {o.id: o for o in session.scalars(select(OrderModel)).all()}
         return {
             "symbol": request.symbol.upper(),
+            "strategy": strategy.name.value,
+            "strategy_description": strategy.description,
             "initial_cash": request.initial_cash,
             "final_equity": Decimal(str(equities.iloc[-1])) if len(equities) else request.initial_cash,
             "total_return": total_return,
