@@ -9,11 +9,12 @@
     *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:radial-gradient(circle at 20% 0,#15314c,var(--bg) 45%);color:var(--text)}
     main{width:min(1050px,92%);margin:48px auto}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.12em}h1{font-size:clamp(2rem,5vw,4rem);margin:.15em 0}p{color:var(--muted)}
     .panel{background:rgba(16,30,49,.92);border:1px solid var(--line);border-radius:18px;padding:24px;margin-top:28px;box-shadow:0 20px 60px #0005}
-    form{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:12px}label{font-size:.78rem;color:var(--muted)}input,select,button{width:100%;margin-top:6px;padding:12px;border-radius:9px;border:1px solid var(--line);background:#081522;color:var(--text)}
+    form{display:grid;grid-template-columns:2fr repeat(6,1fr);gap:12px}label{font-size:.78rem;color:var(--muted)}input,select,button{width:100%;margin-top:6px;padding:12px;border-radius:9px;border:1px solid var(--line);background:#081522;color:var(--text)}
     button{background:var(--accent);color:#052116;font-weight:800;cursor:pointer;align-self:end}button:disabled{opacity:.55}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
     .metric{background:#081522;border-radius:12px;padding:16px}.metric span{display:block;color:var(--muted);font-size:.78rem}.metric strong{font-size:1.35rem}
     canvas{width:100%;height:250px;margin-top:20px;background:#081522;border-radius:12px}.error{color:#ff8f8f}.hint{font-size:.85rem}
-    @media(max-width:800px){form{grid-template-columns:1fr 1fr}.symbol{grid-column:1/-1}.metrics{grid-template-columns:1fr 1fr}}
+    .strategy-note{margin-top:14px;padding:12px 14px;background:#081522;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:.9rem}
+    @media(max-width:900px){form{grid-template-columns:1fr 1fr}.symbol,.strategy{grid-column:1/-1}.metrics{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 <body>
@@ -24,6 +25,10 @@
   <section class="panel">
     <form id="form">
       <label class="symbol">股票代码<input id="symbol" value="AAPL" required placeholder="AAPL / 0700"></label>
+      <label class="strategy">策略<select id="strategy">
+        <option value="MOVING_AVERAGE_CROSS">均线交叉</option>
+        <option value="BUY_AND_HOLD">买入并持有</option>
+      </select></label>
       <label>市场<select id="market"><option>US</option><option>HK</option></select></label>
       <label>开始日期<input id="start" type="date"></label>
       <label>结束日期<input id="end" type="date"></label>
@@ -31,6 +36,7 @@
       <label>慢线<input id="slow" type="number" min="2" value="20"></label>
       <button id="run">运行回测</button>
     </form>
+    <div id="strategyNote" class="strategy-note"></div>
     <p id="status" class="hint">默认查询最近两年公开日线行情。</p>
     <div id="results" hidden>
       <div class="metrics">
@@ -45,9 +51,20 @@
 </main>
 <script>
 const $=id=>document.getElementById(id);
+const notes={
+  MOVING_AVERAGE_CROSS:"当前策略：均线交叉。快线向上穿过慢线时买入，快线向下穿过慢线时清仓。策略在当日收盘后生成信号，下一交易日开盘成交。",
+  BUY_AND_HOLD:"当前策略：买入并持有。首个可交易日买入固定数量，之后一直持有到回测结束，适合作为和主动策略比较的基准。"
+};
+function syncStrategyUi(){
+  const isMa=$("strategy").value==="MOVING_AVERAGE_CROSS";
+  $("fast").disabled=!isMa;$("slow").disabled=!isMa;
+  $("strategyNote").textContent=notes[$("strategy").value];
+}
+$("strategy").addEventListener("change",syncStrategyUi);
+syncStrategyUi();
 $("form").addEventListener("submit",async e=>{
   e.preventDefault(); $("run").disabled=true; $("status").className="hint"; $("status").textContent="正在获取行情并运行回测…"; $("results").hidden=true;
-  const body={symbol:$("symbol").value.trim(),market:$("market").value,fast_window:+$("fast").value,slow_window:+$("slow").value,initial_cash:"100000"};
+  const body={symbol:$("symbol").value.trim(),market:$("market").value,strategy:$("strategy").value,fast_window:+$("fast").value,slow_window:+$("slow").value,initial_cash:"100000"};
   if($("start").value)body.start_date=$("start").value;if($("end").value)body.end_date=$("end").value;
   try{
     const r=await fetch("/backtests",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -55,7 +72,7 @@ $("form").addEventListener("submit",async e=>{
     $("equity").textContent="$"+Number(d.final_equity).toLocaleString(undefined,{maximumFractionDigits:2});
     $("return").textContent=(Number(d.total_return)*100).toFixed(2)+"%";
     $("drawdown").textContent=(Number(d.max_drawdown)*100).toFixed(2)+"%";$("fills").textContent=d.fills.length;
-    draw(d.equity_curve.map(x=>Number(x.equity)));$("results").hidden=false;$("status").textContent=`${d.symbol} · ${d.equity_curve.length} 个交易日`;
+    draw(d.equity_curve.map(x=>Number(x.equity)));$("results").hidden=false;$("status").textContent=`${d.symbol} · ${d.equity_curve.length} 个交易日 · ${d.strategy_description||notes[$("strategy").value]}`;
   }catch(err){$("status").className="error";$("status").textContent=err.message}finally{$("run").disabled=false}
 });
 function draw(v){const c=$("chart"),x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);if(v.length<2)return;const lo=Math.min(...v),hi=Math.max(...v),span=hi-lo||1;
