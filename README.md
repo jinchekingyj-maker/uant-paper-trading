@@ -101,6 +101,19 @@ date,open,high,low,close,volume
 
 注意：免费 Space 默认没有持久化磁盘，服务重启后模拟账户和订单记录可能重置。回测不受影响，因为会重新拉取公开历史日线。
 
+## 部署到 Vercel
+
+如果 Hugging Face 免费版无法使用 Docker/Gradio，可以改用 Vercel。仓库根目录已包含 `vercel.json`，并通过 `api/index.py` 暴露 FastAPI 应用。
+
+创建方式：
+
+1. 打开 Vercel 并使用 GitHub 登录。
+2. Import 本仓库：`jinchekingyj-maker/uant-paper-trading`。
+3. Framework Preset 选择 `Other` 或保持默认。
+4. 直接 Deploy。
+
+Vercel 的无服务器环境只适合轻量模拟盘：SQLite 会写入 `/tmp/paper_trading.db`，冷启动、重部署或实例切换后账户/订单可能重置。回测会重新拉取公开历史日线，不依赖这份 SQLite 文件。
+
 ## 项目结构
 
 ```text
