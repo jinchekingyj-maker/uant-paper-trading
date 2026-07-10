@@ -1,3 +1,14 @@
+---
+title: Quant Paper Trading
+emoji: 📈
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # Quant Paper Trading
 
 一个面向未来港股、美股与期权扩展的 Python 量化交易 MVP。当前版本只提供本地模拟盘和日线回测，不连接任何实盘券商。
@@ -74,6 +85,21 @@ date,open,high,low,close,volume
 ## 部署到 Render
 
 仓库根目录已包含 `render.yaml`。将项目推送至 GitHub 后，在 Render 创建 Blueprint 并连接该仓库即可。免费实例的 SQLite 位于临时磁盘，服务重启后模拟账户会重置；正式长期使用时应升级持久磁盘或 PostgreSQL。
+
+## 部署到 Hugging Face Spaces
+
+如果 Render 卡在银行卡验证，可以改用 Hugging Face Spaces。仓库根目录已包含 `Dockerfile`，README 顶部也声明了 Spaces 配置。
+
+创建方式：
+
+1. 打开 Hugging Face 并创建一个新的 Space。
+2. Space SDK 选择 `Docker`。
+3. 可见性建议先选 `Public`，硬件选免费 CPU 即可。
+4. 创建后选择从 GitHub 导入，使用本仓库地址。
+
+启动成功后，打开 Space 页面即可看到中文操作台；输入 `AAPL`、`MSFT` 或港股 `0700` 可以直接运行公开日线回测。
+
+注意：免费 Space 默认没有持久化磁盘，服务重启后模拟账户和订单记录可能重置。回测不受影响，因为会重新拉取公开历史日线。
 
 ## 项目结构
 
