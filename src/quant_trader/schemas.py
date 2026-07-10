@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .domain import Market, OrderStatus, OrderType, SecurityType, Side
+from .strategy import StrategyType
 
 
 class OrderCreate(BaseModel):
@@ -74,6 +75,7 @@ class AccountRead(BaseModel):
 class BacktestRequest(BaseModel):
     market: Market = Market.US
     symbol: str = "DEMO"
+    strategy: StrategyType = StrategyType.MOVING_AVERAGE_CROSS
     initial_cash: Decimal = Field(default=Decimal("100000"), gt=0)
     fast_window: int = Field(default=3, ge=1)
     slow_window: int = Field(default=5, ge=2)
@@ -83,6 +85,6 @@ class BacktestRequest(BaseModel):
 
     @model_validator(mode="after")
     def windows(self):
-        if self.fast_window >= self.slow_window:
+        if self.strategy == StrategyType.MOVING_AVERAGE_CROSS and self.fast_window >= self.slow_window:
             raise ValueError("fast_window must be smaller than slow_window")
         return self
